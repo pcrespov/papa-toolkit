@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "image-syncer"
 version = "0.1.0"
 description = "A script to organize images by their creation date."
-author = "Your Name"
+author = "pcrespov"
 license = "MIT"
 platforms = any
 
@@ -19,5 +19,5 @@ install_requires = [
 
 [tool.setuptools.entry_points]
 console_scripts = [
-    "image-syncer = main:main",  # Replace 'your_script_name' with your script's Python module name
+    "image-syncer = image_syncer:main", 
 ]
