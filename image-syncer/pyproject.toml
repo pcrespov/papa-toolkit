@@ -2,22 +2,4 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-name = "image-syncer"
-version = "0.1.0"
-description = "A script to organize images by their creation date."
-author = "pcrespov"
-license = "MIT"
-platforms = any
 
-[tool.setuptools.options]
-packages = find:
-python_requires = ">=3.8"
-install_requires = [
-    "Pillow==8.0",  # Add any other dependencies here
-]
-
-[tool.setuptools.entry_points]
-console_scripts = [
-    "image-syncer = image_syncer:main", 
-]
