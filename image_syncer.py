@@ -1,13 +1,18 @@
-import os
-import shutil
+#!/usr/bin/env python3
+
 import argparse
 import logging
-from PIL import Image
+import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 
+from PIL import Image
+
 # Initialize logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(filename)s:%(lineno)d] - %(message)s"
+)
 _logger = logging.getLogger(__name__)
 
 
@@ -38,7 +43,7 @@ def organize_images(
     today_date = datetime.now().strftime("%d-%m-%Y")
 
     # Iterate through the files in the source folder
-    for filename in os.listdir(source_folder) and not dry_run:
+    for filename in os.listdir(source_folder):
         source_path = source_folder / filename
 
         # Check if it's a file and not a folder
@@ -95,8 +100,8 @@ def main() -> None:
         help="Carpeta de destino para organizar las imágenes",
     )
     parser.add_argument(
+        "-n",
         "--dry-run",
-        "n",
         action="store_true",
         help="Modo simulación (sin mover ni crear carpetas)",
     )
@@ -109,7 +114,7 @@ def main() -> None:
             dry_run=args.dry_run,
         )
     except Exception as e:
-        _logger.error(f"Ocurrió un error: {e}")
+        _logger.exception(f"Ocurrió un error: {e}")
 
 
 if __name__ == "__main__":
