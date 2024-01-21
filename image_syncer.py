@@ -6,19 +6,16 @@ and somehow the import functionality is not working properly in his computer. Th
 should replace that.
 """
 
+import shutil
 import argparse
 import logging
-import os
-import shutil
+import re
+import imghdr
+from PIL import Image
 from datetime import datetime
 from pathlib import Path
 
-from PIL import Image
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(filename)s:%(lineno)d] - %(message)s",
-)
+logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
 
@@ -33,39 +30,59 @@ def _get_image_creation_date(image_path: Path) -> datetime:
                     date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
                     return date_obj
     except Exception as e:
-        _logger.error("Error leyendo fecha de %s: %s. Posiblemente no es una imagen.", image_path, e)
+        _logger.debug("Error extracting date from %s: %s", image_path, e, exc_info=True)
     return None
+
+
+# Function to extract date from filename using regular expressions
+def _get_date_from_filename(filename: str) -> datetime:
+    date_pattern = re.compile(
+        r"(\d{4}-\d{2}-\d{2})"
+    )  # Regex pattern for 'YYYY-MM-DD' date format
+    match = date_pattern.search(filename)
+    if match:
+        date_str = match.group(0)
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        return date_obj
+    return None
+
+
+# Function to check if a file is a video (add more video extensions if needed)
+def _is_video(filename: str) -> bool:
+    video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # Add more extensions as needed
+    return filename.lower().endswith(video_extensions)
 
 
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
 ) -> None:
     # Create the destination folder if it doesn't exist
-    if not destination_folder.exists():
+    if not destination_folder.exists() and not dry_run:
         destination_folder.mkdir(parents=True)
 
-    # Get today's date for images without date information
-    today_date = datetime.now().strftime("%Y-%m-%d")
-
-    # Iterate through the files in the source folder
+    # Iterate through the files in the source folder using source_folder.glob()
     for source_path in source_folder.glob("*"):
-        filename = source_path.name
-
         # Check if it's a file and not a folder
         if source_path.is_file():
-            # Get the creation date of the image
-            date_taken = _get_image_creation_date(source_path)
+            filename = source_path.name
 
-            if date_taken:
+            date_taken = _get_date_from_filename(filename)
+
+            if imghdr.what(source_path):
+                date_taken = _get_image_creation_date(source_path)
+
+            if date_taken is None:
+                _logger.warning("No se encontró fecha para el archivo: %s", filename)
+            else:
                 # Create a subfolder in the destination folder based on the date
-                destination_subfolder = date_taken.strftime("%Y-%m-%d")
+                destination_subfolder = date_taken.strftime("%d-%m-%Y")
                 destination_path = destination_folder / destination_subfolder
 
-                # Create the subfolder if it doesn't exist
+                # Create the subfolder if it doesn't exist (in non-dry-run mode)
                 if not destination_path.exists() and not dry_run:
                     destination_path.mkdir(parents=True)
 
-                # Move the image to the corresponding subfolder (in non-dry-run mode)
+                # Move the file to the corresponding subfolder (in non-dry-run mode)
                 if not dry_run:
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info("Se movió %s a %s", filename, destination_subfolder)
@@ -74,35 +91,22 @@ def organize_images(
                         "(Dry run) Se movería %s a %s", filename, destination_subfolder
                     )
 
-            # else:
-            #     # Move the image to the "Today" folder if no date information is available
-            #     today_path = destination_folder / today_date
-
-            #     # Create the "Today" folder if it doesn't exist
-            #     if not today_path.exists() and not dry_run:
-            #         today_path.mkdir(parents=True)
-
-            #     # Move the image to the "Today" folder (in non-dry-run mode)
-            #     if not dry_run:
-            #         shutil.move(str(source_path), str(today_path / filename))
-            #         _logger.info("Se movió %s a %s", filename, today_date)
-            #     else:
-            #         _logger.info("(Dry run) Se movería %s a %s", filename, today_date)
-
     _logger.info("¡Listo!")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Organiza imágenes por su fecha de creación."
+        description="Organiza imágenes y videos por su fecha de creación."
     )
     parser.add_argument(
-        "source_folder", type=Path, help="Carpeta de origen que contiene las imágenes"
+        "source_folder",
+        type=Path,
+        help="Carpeta de origen que contiene las imágenes y videos",
     )
     parser.add_argument(
         "destination_folder",
         type=Path,
-        help="Carpeta de destino para organizar las imágenes",
+        help="Carpeta de destino para organizar las imágenes y videos",
     )
     parser.add_argument(
         "-n",
@@ -112,14 +116,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    source_folder = args.source_folder
+    destination_folder = args.destination_folder
+    dry_run = args.dry_run
+
     try:
-        organize_images(
-            source_folder=args.source_folder,
-            destination_folder=args.destination_folder,
-            dry_run=args.dry_run,
-        )
+        organize_images(source_folder, destination_folder, dry_run)
     except Exception as e:
-        _logger.exception("Ocurrió un error: %s", e)
+        _logger.error("Ocurrió un error: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":
