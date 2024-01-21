@@ -9,14 +9,13 @@ from pathlib import Path
 
 from PIL import Image
 
-# Initialize logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(filename)s:%(lineno)d] - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s [%(filename)s:%(lineno)d] - %(message)s",
 )
 _logger = logging.getLogger(__name__)
 
 
-# Function to extract the creation date from an image
 def _get_image_creation_date(image_path: Path) -> datetime | None:
     try:
         with Image.open(image_path) as img:
@@ -65,8 +64,9 @@ def organize_images(
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info("Se movió %s a %s", filename, destination_subfolder)
                 else:
-                    _logger.info("(Dry run) Se movería %s a %s", filename, destination_subfolder)
-                    
+                    _logger.info(
+                        "(Dry run) Se movería %s a %s", filename, destination_subfolder
+                    )
 
             else:
                 # Move the image to the "Today" folder if no date information is available
