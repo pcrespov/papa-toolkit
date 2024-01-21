@@ -10,6 +10,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
+
 # Function to extract the creation date from an image
 def _get_image_creation_date(image_path: Path) -> datetime | None:
     try:
@@ -25,7 +26,10 @@ def _get_image_creation_date(image_path: Path) -> datetime | None:
         _logger.error(f"Error extracting date from {image_path}: {e}")
     return None
 
-def organize_images(source_folder: Path, destination_folder: Path, dry_run: bool) -> None:
+
+def organize_images(
+    source_folder: Path, destination_folder: Path, dry_run: bool
+) -> None:
     # Create the destination folder if it doesn't exist
     if not destination_folder.exists():
         destination_folder.mkdir(parents=True)
@@ -56,7 +60,9 @@ def organize_images(source_folder: Path, destination_folder: Path, dry_run: bool
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info(f"Se movió {filename} a {destination_subfolder}")
                 else:
-                    _logger.info(f"(Dry run) Se movería {filename} a {destination_subfolder}")
+                    _logger.info(
+                        f"(Dry run) Se movería {filename} a {destination_subfolder}"
+                    )
 
             else:
                 # Move the image to the "Today" folder if no date information is available
@@ -73,25 +79,38 @@ def organize_images(source_folder: Path, destination_folder: Path, dry_run: bool
                 else:
                     _logger.info(f"(Dry run) Se movería {filename} a {today_date}")
 
-
     _logger.info("¡Listo!")
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Organiza imágenes por su fecha de creación.")
-    parser.add_argument("source_folder", type=Path, help="Carpeta de origen que contiene las imágenes")
-    parser.add_argument("destination_folder", type=Path, help="Carpeta de destino para organizar las imágenes")
-    parser.add_argument("--dry-run", "n", action="store_true", help="Modo simulación (sin mover ni crear carpetas)")
+    parser = argparse.ArgumentParser(
+        description="Organiza imágenes por su fecha de creación."
+    )
+    parser.add_argument(
+        "source_folder", type=Path, help="Carpeta de origen que contiene las imágenes"
+    )
+    parser.add_argument(
+        "destination_folder",
+        type=Path,
+        help="Carpeta de destino para organizar las imágenes",
+    )
+    parser.add_argument(
+        "--dry-run",
+        "n",
+        action="store_true",
+        help="Modo simulación (sin mover ni crear carpetas)",
+    )
     args = parser.parse_args()
 
     try:
         organize_images(
-    source_folder = args.source_folder
-    destination_folder = args.destination_folder
-    dry_run = args.dry_run
-
+            source_folder=args.source_folder,
+            destination_folder=args.destination_folder,
+            dry_run=args.dry_run,
         )
     except Exception as e:
         _logger.error(f"Ocurrió un error: {e}")
+
 
 if __name__ == "__main__":
     main()
