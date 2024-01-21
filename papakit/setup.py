@@ -12,6 +12,6 @@ setup(
         "Pillow==8.0",  # Add any other dependencies here
     ],
     console_scripts=[
-        "image-syncer = image_syncer:main",
+        "image-syncer = papakit.image_syncer:main",
     ],
 )

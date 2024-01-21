@@ -1,9 +1,12 @@
-venv:
-	python -m venv .venv
+.venv:
+	@python --version
+	@python -m venv .venv
+	@echo "Type `source .venv/bin/activate`"
 
 install-dev: .venv
 	.venv/bin/pip install -U pip setuptools wheel
-	.venv/bin/pip install -e image-syncer
+	.venv/bin/pip install -e papakit
+	.venv/bin/pip list
 
 clean:
 	git clean -xdf
