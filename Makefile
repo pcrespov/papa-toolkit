@@ -1,7 +1,7 @@
 .venv:
 	@python --version
 	@python -m venv .venv
-	@echo "Type `source .venv/bin/activate`"
+	@echo "Type source .venv/bin/activate"
 
 install: .venv
 	.venv/bin/pip install -U pip setuptools wheel
