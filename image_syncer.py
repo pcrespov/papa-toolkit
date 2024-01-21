@@ -6,16 +6,17 @@ and somehow the import functionality is not working properly in his computer. Th
 should replace that.
 """
 
-import shutil
 import argparse
+import imghdr
 import logging
 import re
-import imghdr
-from PIL import Image
+import shutil
 from datetime import datetime
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO)
+from PIL import Image
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 _logger = logging.getLogger(__name__)
 
 
@@ -70,7 +71,7 @@ def organize_images(
 
             # 1st chance: read from image metadata
             date_taken = _get_image_creation_date(source_path)
-            
+
             if date_taken is None:
                 # 2nd chance read from filename
                 date_taken = _get_date_from_filename(filename)
@@ -78,7 +79,7 @@ def organize_images(
             if date_taken is None:
                 _logger.warning("No se encontró fecha para el archivo: %s", filename)
             else:
-                destination_subfolder = date_taken.strftime("%d-%m-%Y")
+                destination_subfolder = date_taken.strftime("%Y-%m-%d")
                 destination_path = destination_folder / destination_subfolder
 
                 if not destination_path.exists() and not dry_run:
