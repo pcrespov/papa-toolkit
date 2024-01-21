@@ -34,11 +34,10 @@ def _get_image_creation_date(image_path: Path) -> datetime:
     return None
 
 
-# Function to extract date from filename using regular expressions
+date_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
+
+
 def _get_date_from_filename(filename: str) -> datetime:
-    date_pattern = re.compile(
-        r"(\d{4}-\d{2}-\d{2})"
-    )  # Regex pattern for 'YYYY-MM-DD' date format
     match = date_pattern.search(filename)
     if match:
         date_str = match.group(0)
@@ -47,10 +46,13 @@ def _get_date_from_filename(filename: str) -> datetime:
     return None
 
 
-# Function to check if a file is a video (add more video extensions if needed)
 def _is_video(filename: str) -> bool:
     video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # Add more extensions as needed
     return filename.lower().endswith(video_extensions)
+
+
+def _is_image(path: Path):
+    return imghdr.what(path)
 
 
 def organize_images(
@@ -66,23 +68,22 @@ def organize_images(
         if source_path.is_file():
             filename = source_path.name
 
-            date_taken = _get_date_from_filename(filename)
-
-            if imghdr.what(source_path):
-                date_taken = _get_image_creation_date(source_path)
+            # 1st chance: read from image metadata
+            date_taken = _get_image_creation_date(source_path)
+            
+            if date_taken is None:
+                # 2nd chance read from filename
+                date_taken = _get_date_from_filename(filename)
 
             if date_taken is None:
                 _logger.warning("No se encontró fecha para el archivo: %s", filename)
             else:
-                # Create a subfolder in the destination folder based on the date
                 destination_subfolder = date_taken.strftime("%d-%m-%Y")
                 destination_path = destination_folder / destination_subfolder
 
-                # Create the subfolder if it doesn't exist (in non-dry-run mode)
                 if not destination_path.exists() and not dry_run:
                     destination_path.mkdir(parents=True)
 
-                # Move the file to the corresponding subfolder (in non-dry-run mode)
                 if not dry_run:
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info("Se movió %s a %s", filename, destination_subfolder)
