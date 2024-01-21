@@ -3,7 +3,7 @@
 This script should help dad moving his pictures from the upload folder in dropbox to
 his picture archive that is managed by picasa. Unfortunately picasa is not supported anymore
 and somehow the import functionality is not working properly in his computer. This script
-should replace
+should replace that.
 """
 
 import argparse
@@ -22,7 +22,7 @@ logging.basicConfig(
 _logger = logging.getLogger(__name__)
 
 
-def _get_image_creation_date(image_path: Path) -> datetime | None:
+def _get_image_creation_date(image_path: Path) -> datetime:
     try:
         with Image.open(image_path) as img:
             # EXIF (Exchangeable image file format) metadata
