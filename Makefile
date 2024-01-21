@@ -5,7 +5,7 @@
 
 install-dev: .venv
 	.venv/bin/pip install -U pip setuptools wheel
-	.venv/bin/pip install -e papakit
+	.venv/bin/pip install -r requirements.txt
 	.venv/bin/pip list
 
 clean:
