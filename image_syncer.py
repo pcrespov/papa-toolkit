@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+This script should help dad moving his pictures from the upload folder in dropbox to
+his picture archive that is managed by picasa. Unfortunately picasa is not supported anymore
+and somehow the import functionality is not working properly in his computer. This script
+should replace
+"""
 
 import argparse
 import logging
@@ -27,7 +33,7 @@ def _get_image_creation_date(image_path: Path) -> datetime | None:
                     date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
                     return date_obj
     except Exception as e:
-        _logger.exception("Error extracting date from %s: %s", image_path, e)
+        _logger.exception("Error leyendo fecha de %s: %s. Posiblemente no es una imagen.", image_path, e)
     return None
 
 
