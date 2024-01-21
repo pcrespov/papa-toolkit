@@ -28,7 +28,7 @@ def _get_image_creation_date(image_path: Path) -> datetime | None:
                     date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
                     return date_obj
     except Exception as e:
-        _logger.error(f"Error extracting date from {image_path}: {e}")
+        _logger.exception("Error extracting date from %s: %s", image_path, e)
     return None
 
 
@@ -63,11 +63,10 @@ def organize_images(
                 # Move the image to the corresponding subfolder (in non-dry-run mode)
                 if not dry_run:
                     shutil.move(str(source_path), str(destination_path / filename))
-                    _logger.info(f"Se movió {filename} a {destination_subfolder}")
+                    _logger.info("Se movió %s a %s", filename, destination_subfolder)
                 else:
-                    _logger.info(
-                        f"(Dry run) Se movería {filename} a {destination_subfolder}"
-                    )
+                    _logger.info("(Dry run) Se movería %s a %s", filename, destination_subfolder)
+                    
 
             else:
                 # Move the image to the "Today" folder if no date information is available
@@ -80,9 +79,9 @@ def organize_images(
                 # Move the image to the "Today" folder (in non-dry-run mode)
                 if not dry_run:
                     shutil.move(str(source_path), str(today_path / filename))
-                    _logger.info(f"Se movió {filename} a {today_date}")
+                    _logger.info("Se movió %s a %s", filename, today_date)
                 else:
-                    _logger.info(f"(Dry run) Se movería {filename} a {today_date}")
+                    _logger.info("(Dry run) Se movería %s a %s", filename, today_date)
 
     _logger.info("¡Listo!")
 
@@ -114,7 +113,7 @@ def main() -> None:
             dry_run=args.dry_run,
         )
     except Exception as e:
-        _logger.exception(f"Ocurrió un error: {e}")
+        _logger.exception("Ocurrió un error: %s", e)
 
 
 if __name__ == "__main__":
