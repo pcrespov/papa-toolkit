@@ -45,7 +45,7 @@ def organize_images(
         destination_folder.mkdir(parents=True)
 
     # Get today's date for images without date information
-    today_date = datetime.now().strftime("%d-%m-%Y")
+    today_date = datetime.now().strftime("%Y-%m-%d")
 
     # Iterate through the files in the source folder
     for filename in os.listdir(source_folder):
@@ -58,7 +58,7 @@ def organize_images(
 
             if date_taken:
                 # Create a subfolder in the destination folder based on the date
-                destination_subfolder = date_taken.strftime("%d-%m-%Y")
+                destination_subfolder = date_taken.strftime("%Y-%m-%d")
                 destination_path = destination_folder / destination_subfolder
 
                 # Create the subfolder if it doesn't exist
