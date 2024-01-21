@@ -33,7 +33,7 @@ def _get_image_creation_date(image_path: Path) -> datetime:
                     date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
                     return date_obj
     except Exception as e:
-        _logger.exception("Error leyendo fecha de %s: %s. Posiblemente no es una imagen.", image_path, e)
+        _logger.error("Error leyendo fecha de %s: %s. Posiblemente no es una imagen.", image_path, e)
     return None
 
 
@@ -74,20 +74,20 @@ def organize_images(
                         "(Dry run) Se movería %s a %s", filename, destination_subfolder
                     )
 
-            else:
-                # Move the image to the "Today" folder if no date information is available
-                today_path = destination_folder / today_date
+            # else:
+            #     # Move the image to the "Today" folder if no date information is available
+            #     today_path = destination_folder / today_date
 
-                # Create the "Today" folder if it doesn't exist
-                if not today_path.exists() and not dry_run:
-                    today_path.mkdir(parents=True)
+            #     # Create the "Today" folder if it doesn't exist
+            #     if not today_path.exists() and not dry_run:
+            #         today_path.mkdir(parents=True)
 
-                # Move the image to the "Today" folder (in non-dry-run mode)
-                if not dry_run:
-                    shutil.move(str(source_path), str(today_path / filename))
-                    _logger.info("Se movió %s a %s", filename, today_date)
-                else:
-                    _logger.info("(Dry run) Se movería %s a %s", filename, today_date)
+            #     # Move the image to the "Today" folder (in non-dry-run mode)
+            #     if not dry_run:
+            #         shutil.move(str(source_path), str(today_path / filename))
+            #         _logger.info("Se movió %s a %s", filename, today_date)
+            #     else:
+            #         _logger.info("(Dry run) Se movería %s a %s", filename, today_date)
 
     _logger.info("¡Listo!")
 
