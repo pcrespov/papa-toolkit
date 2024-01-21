@@ -48,8 +48,8 @@ def organize_images(
     today_date = datetime.now().strftime("%Y-%m-%d")
 
     # Iterate through the files in the source folder
-    for filename in os.listdir(source_folder):
-        source_path = source_folder / filename
+    for source_path in source_folder.glob("*"):
+        filename = source_path.name
 
         # Check if it's a file and not a folder
         if source_path.is_file():
