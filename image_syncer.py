@@ -63,6 +63,8 @@ def _is_image(path: Path):
     return imghdr.what(path)
 
 
+exclude = {"desktop.ini",}
+
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
 ) -> None:
@@ -73,7 +75,7 @@ def organize_images(
     # Iterate through the files in the source folder using source_folder.glob()
     for source_path in source_folder.glob("*"):
         # Check if it's a file and not a folder
-        if source_path.is_file():
+        if source_path.is_file() and source_path not in exclude:
             filename = source_path.name
             date_taken = None
 
