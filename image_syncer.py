@@ -7,6 +7,7 @@ should replace that.
 """
 
 import argparse
+import contextlib
 import imghdr
 import logging
 import re
@@ -19,7 +20,6 @@ from PIL import Image
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 _logger = logging.getLogger(__name__)
 
-import contextlib
 
 
 @contextlib.contextmanager
