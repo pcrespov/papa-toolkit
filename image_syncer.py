@@ -19,31 +19,38 @@ from PIL import Image
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 _logger = logging.getLogger(__name__)
 
+import contextlib
 
-def _get_image_creation_date(image_path: Path) -> datetime:
+
+@contextlib.contextmanager
+def _suppress_and_log(image_path):
     try:
-        with Image.open(image_path) as img:
-            # EXIF (Exchangeable image file format) metadata
-            exif_data = img._getexif()
-            if exif_data:
-                date_taken = exif_data.get(36867)  # Tag for date and time original
-                if date_taken:
-                    date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
-                    return date_obj
+        yield
     except Exception as e:
-        _logger.debug("Error extracting date from %s: %s", image_path, e, exc_info=True)
+        _logger.debug("Error extracting date from %s: %s", image_path, e)
     return None
 
 
-date_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
+def _get_image_creation_date(image_path: Path) -> datetime:
+    with Image.open(image_path) as img:
+        # EXIF (Exchangeable image file format) metadata
+        exif_data = img._getexif()
+        if exif_data:
+            date_taken = exif_data.get(36867)  # Tag for date and time original
+            if date_taken:
+                date_obj = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
+                return date_obj
+    return None
+
+
+_DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
 def _get_date_from_filename(filename: str) -> datetime:
-    match = date_pattern.search(filename)
+    match = _DATE_RE.search(filename)
     if match:
         date_str = match.group(0)
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        return date_obj
+        return datetime.strptime(date_str, "%Y-%m-%d")
     return None
 
 
@@ -70,7 +77,8 @@ def organize_images(
             filename = source_path.name
 
             # 1st chance: read from image metadata
-            date_taken = _get_image_creation_date(source_path)
+            with _suppress_and_log(source_path):
+                date_taken = _get_image_creation_date(source_path)
 
             if date_taken is None:
                 # 2nd chance read from filename
