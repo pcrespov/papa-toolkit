@@ -75,6 +75,7 @@ def organize_images(
         # Check if it's a file and not a folder
         if source_path.is_file():
             filename = source_path.name
+            date_taken = None
 
             # 1st chance: read from image metadata
             with _suppress_and_log(source_path):
@@ -101,7 +102,7 @@ def organize_images(
                         "(Dry run) Se movería %s a %s", filename, destination_subfolder
                     )
 
-    _logger.info("¡Listo!")
+    _logger.info("¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!")
 
 
 def main() -> None:
