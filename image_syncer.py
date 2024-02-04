@@ -5,30 +5,26 @@ his picture archive that is managed by picasa. Unfortunately picasa is not suppo
 and somehow the import functionality is not working properly in his computer. This script
 should replace that.
 """
+# pylint: disable=missing-function-docstring
+
 
 import argparse
-import contextlib
 import imghdr
 import logging
 import re
 import shutil
+import time
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 from PIL import Image
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 _logger = logging.getLogger(__name__)
 
-
-
-@contextlib.contextmanager
-def _suppress_and_log(image_path):
-    try:
-        yield
-    except Exception as e:
-        _logger.debug("Error extracting date from %s: %s", image_path, e)
-    return None
+MIN = 60  # secs
+HOUR = 60 * MIN
 
 
 def _get_image_creation_date(image_path: Path) -> datetime:
@@ -46,7 +42,7 @@ def _get_image_creation_date(image_path: Path) -> datetime:
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
-def _get_date_from_filename(filename: str) -> datetime:
+def _get_date_from_filename(filename: str) -> Union[datetime, None]:
     match = _DATE_RE.search(filename)
     if match:
         date_str = match.group(0)
@@ -54,49 +50,69 @@ def _get_date_from_filename(filename: str) -> datetime:
     return None
 
 
-def _is_video(filename: str) -> bool:
-    video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # Add more extensions as needed
-    return filename.lower().endswith(video_extensions)
+def _guess_date_taken_or_none(source_path: Path) -> Union[datetime, None]:
+    # 1st chance: read from image metadata
+    try:
+        date_taken = _get_image_creation_date(source_path)
+        return date_taken
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _logger.debug("Error extracting date from %s: %s", source_path, e)
+
+    # 2nd chance read from filename
+    date_taken = _get_date_from_filename(source_path.name)
+    return date_taken
 
 
-def _is_image(path: Path):
-    return imghdr.what(path)
+def _is_video_file(path: Path) -> bool:
+    return path.suffix in {".mp4", ".mov", ".avi", ".mkv"}
 
 
-exclude = {"desktop.ini",}
+def _is_image_file(path: Path):
+    return (
+        path.suffix
+        in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".svg", ".ico"}
+        or imghdr.what(path) is not None
+    )
+
+
+def _is_hidden_file(path):
+    try:
+        if (path.stat().st_file_attributes & 2) != 0:
+            # On Windows, the "hidden" attribute is set (bit 2) for hidden files
+            return True
+    except AttributeError:
+        pass
+
+    if path.name.startswith("."):
+        # On Unix-like systems, files starting with a dot are considered hidden
+        return True
+
+    return False
+
 
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
 ) -> None:
-    # Create the destination folder if it doesn't exist
-    if not destination_folder.exists() and not dry_run:
-        destination_folder.mkdir(parents=True)
-
-    # Iterate through the files in the source folder using source_folder.glob()
     for source_path in source_folder.glob("*"):
-        # Check if it's a file and not a folder
-        if source_path.is_file() and source_path not in exclude:
+        if (
+            source_path.is_file()
+            and not _is_hidden_file(source_path)
+            and (_is_image_file(source_path) or _is_video_file(source_path))
+        ):
             filename = source_path.name
-            date_taken = None
-
-            # 1st chance: read from image metadata
-            with _suppress_and_log(source_path):
-                date_taken = _get_image_creation_date(source_path)
-
-            if date_taken is None:
-                # 2nd chance read from filename
-                date_taken = _get_date_from_filename(filename)
+            date_taken = _guess_date_taken_or_none(source_path)
 
             if date_taken is None:
                 _logger.warning("No se encontró fecha para el archivo: %s", filename)
+
             else:
                 destination_subfolder = date_taken.strftime("%Y-%m-%d")
                 destination_path = destination_folder / destination_subfolder
 
-                if not destination_path.exists() and not dry_run:
-                    destination_path.mkdir(parents=True)
-
                 if not dry_run:
+                    if not destination_path.exists():
+                        destination_path.mkdir(parents=True)
+
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info("Se movió %s a %s", filename, destination_subfolder)
                 else:
@@ -104,10 +120,14 @@ def organize_images(
                         "(Dry run) Se movería %s a %s", filename, destination_subfolder
                     )
 
-    _logger.info("¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!")
-
 
 def main() -> None:
+    def positive_int(value):
+        ivalue = int(value)
+        if ivalue <= 0:
+            raise argparse.ArgumentTypeError(f"'{value}' debe ser positivo")
+        return ivalue
+
     parser = argparse.ArgumentParser(
         description="Organiza imágenes y videos por su fecha de creación."
     )
@@ -127,15 +147,32 @@ def main() -> None:
         action="store_true",
         help="Modo simulación (sin mover ni crear carpetas)",
     )
+    parser.add_argument(
+        "--retry-after",
+        default=None,
+        type=positive_int,
+        help="Intervalo en el que la operación se repetirá (en segundos)",
+    )
+
     args = parser.parse_args()
 
     source_folder = args.source_folder
     destination_folder = args.destination_folder
     dry_run = args.dry_run
+    retry_after = args.retry_after
 
     try:
-        organize_images(source_folder, destination_folder, dry_run)
-    except Exception as e:
+        if retry_after:
+            while True:
+                organize_images(source_folder, destination_folder, dry_run)
+                time.sleep(retry_after)
+        else:
+            organize_images(source_folder, destination_folder, dry_run)
+            _logger.info(
+                "¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!"
+            )
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
         _logger.error("Ocurrió un error: %s", e, exc_info=True)
 
 
