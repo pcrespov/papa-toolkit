@@ -15,12 +15,15 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Union
+import time
 
 from PIL import Image
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 _logger = logging.getLogger(__name__)
 
+MIN = 60  # secs
+HOUR = 60 * MIN
 
 
 @contextlib.contextmanager
@@ -76,36 +79,30 @@ def _is_image(path: Path):
     return imghdr.what(path)
 
 
-exclude = {"desktop.ini",}
-
-
+exclude = {
+    "desktop.ini",
+}
 
 
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
 ) -> None:
-    # Create the destination folder if it doesn't exist
-    if not destination_folder.exists() and not dry_run:
-        destination_folder.mkdir(parents=True)
-
-    # Iterate through the files in the source folder using source_folder.glob()
     for source_path in source_folder.glob("*"):
-        # Check if it's a file and not a folder
         if source_path.is_file() and source_path not in exclude:
-
             filename = source_path.name
             date_taken = _guess_date_taken_or_none(source_path)
 
             if date_taken is None:
                 _logger.warning("No se encontró fecha para el archivo: %s", filename)
+
             else:
                 destination_subfolder = date_taken.strftime("%Y-%m-%d")
                 destination_path = destination_folder / destination_subfolder
 
-                if not destination_path.exists() and not dry_run:
-                    destination_path.mkdir(parents=True)
-
                 if not dry_run:
+                    if not destination_path.exists():
+                        destination_path.mkdir(parents=True)
+
                     shutil.move(str(source_path), str(destination_path / filename))
                     _logger.info("Se movió %s a %s", filename, destination_subfolder)
                 else:
@@ -117,6 +114,12 @@ def organize_images(
 
 
 def main() -> None:
+    def positive_int(value):
+        ivalue = int(value)
+        if ivalue <= 0:
+            raise argparse.ArgumentTypeError(f"'{value}' debe ser positivo")
+        return ivalue
+
     parser = argparse.ArgumentParser(
         description="Organiza imágenes y videos por su fecha de creación."
     )
@@ -136,14 +139,28 @@ def main() -> None:
         action="store_true",
         help="Modo simulación (sin mover ni crear carpetas)",
     )
+    parser.add_argument(
+        "--retry-after",
+        default=None,
+        type=positive_int,
+        help="Intervalo en el que la operación se repetirá (en segundos)",
+    )
+
     args = parser.parse_args()
 
     source_folder = args.source_folder
     destination_folder = args.destination_folder
     dry_run = args.dry_run
+    retry_after = args.retry_after
 
     try:
-        organize_images(source_folder, destination_folder, dry_run)
+        if retry_after:
+            while True:
+                organize_images(source_folder, destination_folder, dry_run)
+                time.sleep(retry_after)
+        else:
+            organize_images(source_folder, destination_folder, dry_run)
+
     except Exception as e:
         _logger.error("Ocurrió un error: %s", e, exc_info=True)
 
