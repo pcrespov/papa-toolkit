@@ -9,7 +9,6 @@ should replace that.
 
 
 import argparse
-import contextlib
 import imghdr
 import logging
 import re
@@ -28,15 +27,6 @@ MIN = 60  # secs
 HOUR = 60 * MIN
 
 
-@contextlib.contextmanager
-def _suppress_and_log(image_path):
-    try:
-        yield
-    except Exception as e:
-        _logger.debug("Error extracting date from %s: %s", image_path, e)
-    return None
-
-
 def _get_image_creation_date(image_path: Path) -> datetime:
     with Image.open(image_path) as img:
         # EXIF (Exchangeable image file format) metadata
@@ -52,7 +42,7 @@ def _get_image_creation_date(image_path: Path) -> datetime:
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
-def _get_date_from_filename(filename: str) -> datetime:
+def _get_date_from_filename(filename: str) -> Union[datetime, None]:
     match = _DATE_RE.search(filename)
     if match:
         date_str = match.group(0)
@@ -61,14 +51,15 @@ def _get_date_from_filename(filename: str) -> datetime:
 
 
 def _guess_date_taken_or_none(source_path: Path) -> Union[datetime, None]:
-    date_taken = None
     # 1st chance: read from image metadata
-    with _suppress_and_log(source_path):
+    try:
         date_taken = _get_image_creation_date(source_path)
+        return date_taken
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _logger.debug("Error extracting date from %s: %s", source_path, e)
 
-    if date_taken is None:
-        # 2nd chance read from filename
-        date_taken = _get_date_from_filename(source_path.name)
+    # 2nd chance read from filename
+    date_taken = _get_date_from_filename(source_path.name)
     return date_taken
 
 
