@@ -14,6 +14,7 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 from PIL import Image
 
@@ -54,6 +55,18 @@ def _get_date_from_filename(filename: str) -> datetime:
     return None
 
 
+def _guess_date_taken_or_none(source_path: Path) -> Union[datetime, None]:
+    date_taken = None
+    # 1st chance: read from image metadata
+    with _suppress_and_log(source_path):
+        date_taken = _get_image_creation_date(source_path)
+
+    if date_taken is None:
+        # 2nd chance read from filename
+        date_taken = _get_date_from_filename(source_path.name)
+    return date_taken
+
+
 def _is_video(filename: str) -> bool:
     video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # Add more extensions as needed
     return filename.lower().endswith(video_extensions)
@@ -64,6 +77,9 @@ def _is_image(path: Path):
 
 
 exclude = {"desktop.ini",}
+
+
+
 
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
@@ -76,16 +92,9 @@ def organize_images(
     for source_path in source_folder.glob("*"):
         # Check if it's a file and not a folder
         if source_path.is_file() and source_path not in exclude:
+
             filename = source_path.name
-            date_taken = None
-
-            # 1st chance: read from image metadata
-            with _suppress_and_log(source_path):
-                date_taken = _get_image_creation_date(source_path)
-
-            if date_taken is None:
-                # 2nd chance read from filename
-                date_taken = _get_date_from_filename(filename)
+            date_taken = _guess_date_taken_or_none(source_path)
 
             if date_taken is None:
                 _logger.warning("No se encontró fecha para el archivo: %s", filename)
