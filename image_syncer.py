@@ -5,6 +5,8 @@ his picture archive that is managed by picasa. Unfortunately picasa is not suppo
 and somehow the import functionality is not working properly in his computer. This script
 should replace that.
 """
+# pylint: disable=missing-function-docstring
+
 
 import argparse
 import contextlib
@@ -179,7 +181,7 @@ def main() -> None:
                 "¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!"
             )
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         _logger.error("Ocurrió un error: %s", e, exc_info=True)
 
 
