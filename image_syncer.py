@@ -83,12 +83,26 @@ exclude = {
     "desktop.ini",
 }
 
+def _is_hidden_file(path):        
+    if (path.stat().st_file_attributes & 2) != 0:
+        # On Windows, the "hidden" attribute is set (bit 2) for hidden files
+        return True
+    if path.name.startswith('.'):
+        # On Unix-like systems, files starting with a dot are considered hidden
+        return True
+    
+    return False
+
 
 def organize_images(
     source_folder: Path, destination_folder: Path, dry_run: bool
 ) -> None:
     for source_path in source_folder.glob("*"):
-        if source_path.is_file() and source_path not in exclude:
+        if (
+            source_path.is_file()
+            and not _is_hidden_file(source_path)
+            and source_path not in exclude
+        ):
             filename = source_path.name
             date_taken = _guess_date_taken_or_none(source_path)
 
