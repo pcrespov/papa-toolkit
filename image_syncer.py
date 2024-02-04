@@ -12,10 +12,10 @@ import imghdr
 import logging
 import re
 import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Union
-import time
 
 from PIL import Image
 
@@ -83,14 +83,19 @@ exclude = {
     "desktop.ini",
 }
 
-def _is_hidden_file(path):        
-    if (path.stat().st_file_attributes & 2) != 0:
-        # On Windows, the "hidden" attribute is set (bit 2) for hidden files
-        return True
-    if path.name.startswith('.'):
+
+def _is_hidden_file(path):
+    try:
+        if (path.stat().st_file_attributes & 2) != 0:
+            # On Windows, the "hidden" attribute is set (bit 2) for hidden files
+            return True
+    except AttributeError:
+        pass
+
+    if path.name.startswith("."):
         # On Unix-like systems, files starting with a dot are considered hidden
         return True
-    
+
     return False
 
 
