@@ -8,7 +8,13 @@ install: .venv
 	.venv/bin/pip install -r requirements.txt
 	.venv/bin/pip list
 
+
+install-dev: install
+	.venv/bin/pip install -r requirements-dev.txt
+	.venv/bin/pip list
+
+
 clean:
 	git clean -xdf
 
-.PHONY: .venv install-dev clean
+.PHONY: install-dev clean install
