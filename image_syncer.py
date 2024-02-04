@@ -70,18 +70,16 @@ def _guess_date_taken_or_none(source_path: Path) -> Union[datetime, None]:
     return date_taken
 
 
-def _is_video(filename: str) -> bool:
-    video_extensions = (".mp4", ".mov", ".avi", ".mkv")  # Add more extensions as needed
-    return filename.lower().endswith(video_extensions)
+def _is_video_file(path: Path) -> bool:
+    return path.suffix in {".mp4", ".mov", ".avi", ".mkv"}
 
 
-def _is_image(path: Path):
-    return imghdr.what(path)
-
-
-exclude = {
-    "desktop.ini",
-}
+def _is_image_file(path: Path):
+    return (
+        path.suffix
+        in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".svg", ".ico"}
+        or imghdr.what(path) is not None
+    )
 
 
 def _is_hidden_file(path):
@@ -106,7 +104,7 @@ def organize_images(
         if (
             source_path.is_file()
             and not _is_hidden_file(source_path)
-            and source_path not in exclude
+            and (_is_image_file(source_path) or _is_video_file(source_path))
         ):
             filename = source_path.name
             date_taken = _guess_date_taken_or_none(source_path)
@@ -128,8 +126,6 @@ def organize_images(
                     _logger.info(
                         "(Dry run) Se movería %s a %s", filename, destination_subfolder
                     )
-
-    _logger.info("¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!")
 
 
 def main() -> None:
@@ -179,6 +175,9 @@ def main() -> None:
                 time.sleep(retry_after)
         else:
             organize_images(source_folder, destination_folder, dry_run)
+            _logger.info(
+                "¡Ya está todo listo Pedro. Tus fotos se han importado a Picasa!"
+            )
 
     except Exception as e:
         _logger.error("Ocurrió un error: %s", e, exc_info=True)

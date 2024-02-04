@@ -1,7 +1,8 @@
+# pylint: disable=missing-function-docstring
 # pylint: disable=redefined-outer-name
+# pylint: disable=too-many-arguments
 # pylint: disable=unused-argument
 # pylint: disable=unused-variable
-# pylint: disable=too-many-arguments
 
 import itertools
 from datetime import datetime
@@ -54,7 +55,9 @@ def test_organize_images(
     assert destination_folder.exists()
 
     for filename in media_filenames:
-        new_path = next(iter(destination_folder.rglob(f"{filename}")))
+        found = list(destination_folder.rglob(f"{filename}"))
+        assert len(found) == 1
+        new_path = found[0]
         assert new_path
         assert datetime.strptime(new_path.parent.name, "%Y-%m-%d")
 
