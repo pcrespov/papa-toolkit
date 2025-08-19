@@ -12,6 +12,7 @@ import imghdr
 import logging
 import re
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -19,7 +20,12 @@ from PIL import Image
 import subprocess
 import json
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
+# Configure rich logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%H:%M:%S"
+)
 _logger = logging.getLogger(__name__)
 
 
@@ -115,6 +121,43 @@ def _is_supported_file(file_path: Path) -> bool:
     return _is_image(file_path) or _is_video(file_path.name)
 
 
+def _print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='█', print_end="\r"):
+    """
+    Call in a loop to create terminal progress bar
+    """
+    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+
+def _print_banner():
+    """Print a nice banner for the application"""
+    print("=" * 70)
+    print("  📸 ORGANIZADOR DE FOTOS Y VIDEOS - PAPA TOOLKIT 📹")
+    print("=" * 70)
+    print()
+
+
+def _print_summary(stats):
+    """Print a summary of the operation"""
+    print("\n" + "=" * 50)
+    print("  📊 RESUMEN DEL PROCESO")
+    print("=" * 50)
+    print(f"  Archivos procesados: {stats['processed']}")
+    print(f"  Imágenes movidas: {stats['images_moved']}")
+    print(f"  Videos movidos: {stats['videos_moved']}")
+    print(f"  Archivos omitidos: {stats['skipped']}")
+    print(f"  Errores: {stats['errors']}")
+    if stats['dry_run']:
+        print("  🔍 Modo simulación - No se movieron archivos")
+    print("=" * 50)
+    print()
+
+
 def organize_files(
     source_folder: Path, destination_folder: Path, dry_run: bool, file_types: list = None
 ) -> None:
@@ -127,65 +170,115 @@ def organize_files(
         dry_run: If True, only simulate the operation without moving files
         file_types: List of file types to process ('image', 'video'). If None, process all supported types.
     """
+    # Initialize statistics
+    stats = {
+        'processed': 0,
+        'images_moved': 0,
+        'videos_moved': 0,
+        'skipped': 0,
+        'errors': 0,
+        'dry_run': dry_run
+    }
+    
+    # Get all files first for progress tracking
+    all_files = [f for f in source_folder.glob("*") if f.is_file() and f.name not in exclude]
+    total_files = len(all_files)
+    
+    if total_files == 0:
+        print("❌ No se encontraron archivos en la carpeta de origen.")
+        return
+    
+    file_type_str = f" ({file_types[0]}s)" if file_types else ""
+    print(f"🔍 Encontrados {total_files} archivos{file_type_str} para procesar...")
+    print()
+    
     # Create the destination folder if it doesn't exist
     if not destination_folder.exists() and not dry_run:
         destination_folder.mkdir(parents=True)
+        print(f"📁 Creada carpeta de destino: {destination_folder}")
 
-    # Iterate through the files in the source folder
-    for source_path in source_folder.glob("*"):
-        # Check if it's a file and not a folder
-        if source_path.is_file() and source_path.name not in exclude:
-            filename = source_path.name
-            
-            # Check file type filtering
-            is_image = _is_image(source_path)
-            is_video = _is_video(source_path.name)
-            
-            # Skip files that are not supported
-            if not is_image and not is_video:
-                _logger.warning("Archivo no soportado, se omite: %s", filename)
+    # Process each file with progress bar
+    for i, source_path in enumerate(all_files, 1):
+        filename = source_path.name
+        
+        # Update progress bar
+        _print_progress_bar(
+            i, total_files, 
+            prefix='Procesando:', 
+            suffix=f'({i}/{total_files}) {filename[:30]}...' if len(filename) > 30 else f'({i}/{total_files}) {filename}'
+        )
+        
+        # Check file type filtering
+        is_image = _is_image(source_path)
+        is_video = _is_video(source_path.name)
+        
+        # Skip files that are not supported
+        if not is_image and not is_video:
+            stats['skipped'] += 1
+            continue
+        
+        # Apply file type filter if specified
+        if file_types:
+            if 'image' not in file_types and is_image:
+                stats['skipped'] += 1
                 continue
-            
-            # Apply file type filter if specified
-            if file_types:
-                if 'image' not in file_types and is_image:
-                    continue
-                if 'video' not in file_types and is_video:
-                    continue
+            if 'video' not in file_types and is_video:
+                stats['skipped'] += 1
+                continue
 
-            date_taken = None
+        date_taken = None
 
-            # 1st chance: read from metadata
+        # 1st chance: read from metadata
+        try:
             with _suppress_and_log(source_path):
                 date_taken = _get_file_creation_date(source_path)
+        except Exception:
+            stats['errors'] += 1
 
-            # 2nd chance: read from filename
-            if date_taken is None:
-                date_taken = _get_date_from_filename(filename)
+        # 2nd chance: read from filename
+        if date_taken is None:
+            date_taken = _get_date_from_filename(filename)
 
-            if date_taken is None:
-                _logger.warning("No se encontró fecha para el archivo: %s", filename)
-                continue
+        if date_taken is None:
+            stats['skipped'] += 1
+            continue
 
-            # Organize by date
-            destination_subfolder = date_taken.strftime("%Y-%m-%d")
-            destination_path = destination_folder / destination_subfolder
+        # Organize by date
+        destination_subfolder = date_taken.strftime("%Y-%m-%d")
+        destination_path = destination_folder / destination_subfolder
 
+        try:
             if not destination_path.exists() and not dry_run:
                 destination_path.mkdir(parents=True)
 
             if not dry_run:
                 shutil.move(str(source_path), str(destination_path / filename))
-                _logger.info("Se movió %s a %s", filename, destination_subfolder)
+                
+            # Update statistics
+            stats['processed'] += 1
+            if is_image:
+                stats['images_moved'] += 1
             else:
-                _logger.info(
-                    "(Dry run) Se movería %s a %s", filename, destination_subfolder
-                )
+                stats['videos_moved'] += 1
+                
+        except Exception as e:
+            stats['errors'] += 1
+            _logger.error("Error procesando %s: %s", filename, e)
 
-    _logger.info("¡Proceso completado!")
+    # Print final summary
+    _print_summary(stats)
+    
+    if stats['processed'] > 0:
+        print("✅ ¡Proceso completado exitosamente!")
+    else:
+        print("⚠️  No se procesaron archivos.")
+    print()
 
 
 def main() -> None:
+    # Print banner first
+    _print_banner()
+    
     parser = argparse.ArgumentParser(
         description="Organiza archivos multimedia por su fecha de creación."
     )
@@ -210,17 +303,51 @@ def main() -> None:
         action="store_true",
         help="Modo simulación (sin mover ni crear carpetas)",
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Mostrar información detallada durante el proceso",
+    )
     args = parser.parse_args()
 
+    # Set logging level based on verbose flag
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
     source_folder = args.source_folder
     destination_folder = args.destination_folder
     dry_run = args.dry_run
     file_types = [args.type] if args.type else None
 
+    # Validate source folder
+    if not source_folder.exists():
+        print(f"❌ Error: La carpeta de origen no existe: {source_folder}")
+        return
+
+    if not source_folder.is_dir():
+        print(f"❌ Error: La ruta de origen no es una carpeta: {source_folder}")
+        return
+
+    # Print configuration
+    print(f"📂 Carpeta de origen: {source_folder}")
+    print(f"📁 Carpeta de destino: {destination_folder}")
+    if file_types:
+        print(f"🎯 Procesando solo: {file_types[0]}s")
+    else:
+        print("🎯 Procesando: imágenes y videos")
+    
+    if dry_run:
+        print("🔍 Modo simulación activado")
+    print()
+
     try:
         organize_files(source_folder, destination_folder, dry_run, file_types)
+    except KeyboardInterrupt:
+        print("\n⏹️  Proceso interrumpido por el usuario.")
     except Exception as e:
-        _logger.error("Ocurrió un error: %s", e, exc_info=True)
+        print(f"\n❌ Error inesperado: {e}")
+        if args.verbose:
+            _logger.error("Error detallado: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":
