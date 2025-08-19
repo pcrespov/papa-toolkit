@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "pillow",
+# ]
+# ///
 """
 This script should help dad moving his pictures from the upload folder in dropbox to
 his picture archive that is managed by picasa. Unfortunately picasa is not supported anymore
