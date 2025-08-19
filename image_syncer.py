@@ -14,11 +14,9 @@ should replace that.
 
 import argparse
 import contextlib
-import imghdr
 import logging
 import re
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -108,8 +106,14 @@ def _is_video(filename: str) -> bool:
     return filename.lower().endswith(video_extensions)
 
 
-def _is_image(path: Path):
-    return imghdr.what(path)
+def _is_image(path: Path) -> bool:
+    """Check if file is an image using PIL."""
+    try:
+        with Image.open(path) as img:
+            img.verify()  # This will raise an exception if it's not a valid image
+            return True
+    except (IOError, OSError):
+        return False
 
 
 exclude = {"desktop.ini",}
