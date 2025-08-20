@@ -14,10 +14,7 @@ python image_syncer.py "%SOURCE_FOLDER%" "%IMAGE_DEST%" -t image
 
 echo.
 echo Procesando videos...
-python image_syncer.py "%SOURCE_FOLDER%" "%VIDEO_DEST%" -t video
-
-echo Organizando carpetas con formato YYYY-MM-DD en carpetas por año...
-python year_organizer.py "%VIDEO_DEST%"
+python image_syncer.py "%SOURCE_FOLDER%" "%VIDEO_DEST%" -t video --year-folders
 
 echo.
 echo Proceso completado!

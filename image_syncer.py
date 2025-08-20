@@ -224,6 +224,7 @@ def organize_files(
     destination_folder: Path,
     dry_run: bool,
     file_types: list = None,
+    use_year_folders: bool = False,
 ) -> None:
     """
     Organize files by creation date into subdirectories.
@@ -233,6 +234,7 @@ def organize_files(
         destination_folder: Target directory for organized files
         dry_run: If True, only simulate the operation without moving files
         file_types: List of file types to process ('image', 'video'). If None, process all supported types.
+        use_year_folders: If True, organize as YYYY/YYYY-MM-DD/, otherwise just YYYY-MM-DD/
     """
     # Initialize statistics
     stats = {
@@ -312,8 +314,13 @@ def organize_files(
             continue
 
         # Organize by date
-        destination_subfolder = date_taken.strftime("%Y-%m-%d")
-        destination_path = destination_folder / destination_subfolder
+        if use_year_folders:
+            year = date_taken.strftime("%Y")
+            date_folder = date_taken.strftime("%Y-%m-%d")
+            destination_path = destination_folder / year / date_folder
+        else:
+            destination_subfolder = date_taken.strftime("%Y-%m-%d")
+            destination_path = destination_folder / destination_subfolder
 
         try:
             if not destination_path.exists() and not dry_run:
@@ -378,6 +385,12 @@ def main() -> None:
         action="store_true",
         help="Mostrar información detallada durante el proceso",
     )
+    parser.add_argument(
+        "-y",
+        "--year-folders",
+        action="store_true",
+        help="Organizar en carpetas por año (YYYY/YYYY-MM-DD/) en lugar de solo por fecha (YYYY-MM-DD/)",
+    )
     args = parser.parse_args()
 
     # Set logging level based on verbose flag
@@ -388,6 +401,7 @@ def main() -> None:
     destination_folder = args.destination_folder
     dry_run = args.dry_run
     file_types = [args.type] if args.type else None
+    use_year_folders = args.year_folders
 
     # Check if ffprobe is available when processing videos
     if not file_types or "video" in file_types:
@@ -419,7 +433,7 @@ def main() -> None:
     print()
 
     try:
-        organize_files(source_folder, destination_folder, dry_run, file_types)
+        organize_files(source_folder, destination_folder, dry_run, file_types, use_year_folders)
     except KeyboardInterrupt:
         print("\n⏹️  Proceso interrumpido por el usuario.")
     except Exception as e:
