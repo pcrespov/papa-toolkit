@@ -13,16 +13,15 @@ should replace that.
 """
 
 import argparse
-import contextlib
+import json
 import logging
 import re
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
-import subprocess
-import json
 
 # Configure rich logging
 logging.basicConfig(
@@ -31,15 +30,6 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 _logger = logging.getLogger(__name__)
-
-
-@contextlib.contextmanager
-def _suppress_and_log(file_path):
-    try:
-        yield
-    except Exception as e:
-        _logger.info("Error extracting metadata from %s: %s", file_path, e)
-    return None
 
 
 def _get_video_creation_date(video_path: Path) -> datetime:
@@ -117,6 +107,7 @@ def _is_image(path: Path) -> bool:
             img.verify()  # This will raise an exception if it's not a valid image
             return True
     except (IOError, OSError):
+        _logger.debug("File %s is not a valid image", path)
         return False
 
 
