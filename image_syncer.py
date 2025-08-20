@@ -85,13 +85,25 @@ def _get_image_creation_date(image_path: Path) -> datetime:
 
 
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+_WHATSAPP_DATE_RE = re.compile(r"(\d{8})")  # Pattern for YYYYMMDD format
 
 
-def _get_date_from_filename(filename: str) -> datetime:
+def _get_date_from_filename(filename: str) -> datetime | None:
+    # Try standard YYYY-MM-DD format first
     match = _DATE_RE.search(filename)
     if match:
         date_str = match.group(0)
         return datetime.strptime(date_str, "%Y-%m-%d")
+    
+    # Try WhatsApp format (IMG-YYYYMMDD-WAxxxx.jpg)
+    match = _WHATSAPP_DATE_RE.search(filename)
+    if match:
+        date_str = match.group(0)
+        try:
+            return datetime.strptime(date_str, "%Y%m%d")
+        except ValueError:
+            pass
+    
     return None
 
 
